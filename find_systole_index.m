@@ -30,18 +30,22 @@
 
     mask = createArteryMask(video) ;
 
-    figure(1)
-    imagesc(mask);
-    title('Artery mask (no time lag)');
-    axis off
-    axis equal
-    colormap gray
+%     figure(1)
+%     imagesc(mask);
+%     title('Artery mask (no time lag)');
+%     axis off
+%     axis equal
+%     colormap gray
 
 
 
     pulse = squeeze(mean(video .* mask, [1 2]));
 
     pulse_init = pulse - mean(pulse, "all");
+    y = pulse_init;
+    y = y/max(pulse_init);
+    plot(y, 'r--');
+    hold off
     pulse_init = detrend(pulse_init);
 
 

@@ -1,2 +1,2 @@
-# pulseWave
-pulse wave analysis
+# PulseWave
+Pulse wave analysis

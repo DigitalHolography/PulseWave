@@ -18,7 +18,7 @@ function artery_mask = createArteryMask(video)
     figure(7)
     y = pulse_init;
     y = y/max(pulse_init);
-    plot(y);
+    plot(y, '')
     hold on
     C = C .* pulse_init_3d;
     C = squeeze(mean(C, 3));
