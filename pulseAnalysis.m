@@ -1,46 +1,23 @@
-function [v_RMS_one_cycle,v_RMS_all] = pulseAnalysis(Ninterp, fullVideoM2M0, fullVideoM1M0,sys_index_list,meanIm, maskArtery,maskVein,maskBackground ,ToolBox,path)
+function [v_RMS_one_cycle,v_RMS_all] = pulseAnalysis(Ninterp, fullVideoM2M0, fullVideoM1M0,sys_index_list, maskArtery,maskVein,maskBackground ,ToolBox,path)
+PW_params = Parameters(path);
 
-% Variable : LocalBKG_artery, Taille : 10631287200 bytes
-% Variable : fullVideoM1M0, Taille : 10631287200 bytes (DEBUT)
-% Variable : fullVideoM2M0, Taille : 10631287200 bytes (DEBUT)
-% Variable : maskArtery, Taille : 18849800 bytes (DEBUT)
-% Variable : meanIm, Taille : 18849800 bytes  (DEBUT)
-% Variable : maskBackground, Taille : 2356225 bytes (DEBUT)
-% Variable : maskVein, Taille : 2356225 bytes (DEBUT)
-% Variable : variableInfo, Taille : 12898 bytes
+dataCubeM2M0 = fullVideoM2M0;
+dataCubeM1M0 = fullVideoM1M0;
 
-
-% Size variables
-variableInfo = whos;
-[~, sortedIndices] = sort([variableInfo.bytes], 'descend');
-% print 3 largest variables
-disp('BEGIN PULSE ANALYSIS FUNCTION')
-for i = 1: size(variableInfo,1)
-    fprintf('Variable : %s, Taille : %d bytes\n', variableInfo(sortedIndices(i)).name, variableInfo(sortedIndices(i)).bytes);
-    if variableInfo(sortedIndices(i)).bytes < 100000
-        break
-    end
-end
-disp('-----------------------------------------------------------')
-
-PW_params = Parameters_json(path);
-
-n_frames = size(fullVideoM2M0,3);
-
-meanIm = mat2gray(meanIm);
+meanIm = mat2gray(squeeze(mean(dataCubeM2M0,3)));
 tolVal = [0.02, 0.98]; 
 meanIm = mat2gray(imadjust(meanIm, stretchlim(meanIm, tolVal)));
 
 
 %% calculate raw signals of arteries, background and veins
 
-fullArterialPulse = fullVideoM2M0 .* maskArtery;
+fullArterialPulse = dataCubeM2M0 .* maskArtery;
 fullArterialPulse = squeeze(sum(fullArterialPulse, [1 2]))/nnz(maskArtery);
 
-fullBackgroundSignal = fullVideoM2M0 .* maskBackground;
+fullBackgroundSignal = dataCubeM2M0 .* maskBackground;
 fullBackgroundSignal = squeeze(sum(fullBackgroundSignal, [1 2]))/nnz(maskBackground);
 
-fullVenousSignal = fullVideoM2M0 .* maskVein;
+fullVenousSignal = dataCubeM2M0 .* maskVein;
 fullVenousSignal = squeeze(sum(fullVenousSignal, [1 2]))/nnz(maskVein);
 
 fullArterialPulseMinusBackground = fullArterialPulse - fullBackgroundSignal;
@@ -78,57 +55,42 @@ legend
 
 % 
 %% Local BKG Artery
+
 local_mask_artery = imdilate(maskArtery,strel('disk',PW_params.local_background_width));
-LocalBKG_artery = zeros(size(fullVideoM2M0));
-
-% Size variables
-variableInfo = whos;
-[~, sortedIndices] = sort([variableInfo.bytes], 'descend');
-% print 3 largest variables
-disp('BEFORE CATASTROPHE')
-for i = 1: size(variableInfo,1)
-    fprintf('Variable : %s, Taille : %d bytes\n', variableInfo(sortedIndices(i)).name, variableInfo(sortedIndices(i)).bytes);
-    if variableInfo(sortedIndices(i)).bytes < 100000
-        break
-    end
-end
-disp('-----------------------------------------------------------')
-
-disp('pa 1')
-parfor nn = 1:n_frames
-    LocalBKG_artery(:,:,nn) = regionfill(fullVideoM2M0(:,:,nn),local_mask_artery);
+LocalBKG_artery = zeros(size(dataCubeM2M0));
+parfor nn = 1:size(dataCubeM2M0,3)
+    LocalBKG_artery(:,:,nn) = regionfill(dataCubeM2M0(:,:,nn),local_mask_artery);
 end
 
 %% Local BKG Vein
 
 local_mask_vein = imdilate(maskVein,strel('disk',PW_params.local_background_width));
-LocalBKG_vein = zeros(size(fullVideoM2M0));
-disp('pa 2')
-parfor nn = 1:n_frames
-    LocalBKG_vein(:,:,nn) = regionfill(fullVideoM2M0(:,:,nn),local_mask_vein);
+LocalBKG_vein = zeros(size(dataCubeM2M0));
+parfor nn = 1:size(dataCubeM2M0,3)
+    LocalBKG_vein(:,:,nn) = regionfill(dataCubeM2M0(:,:,nn),local_mask_vein);
 end
 
-fullVideoM2M0minusBKG = fullVideoM2M0 - (LocalBKG_vein.*~local_mask_artery + LocalBKG_artery.*local_mask_artery); 
+dataCubeM2M0minusBKG = dataCubeM2M0 - (LocalBKG_vein.*~local_mask_artery + LocalBKG_artery.*local_mask_artery); 
 
-v_RMS_all = ToolBox.ScalingFactorVelocityInPlane*fullVideoM2M0minusBKG;
+v_RMS_all = ToolBox.ScalingFactorVelocityInPlane*dataCubeM2M0minusBKG;
 
 %% Global BKG for beautiful images 
 
-A = ones(size(fullVideoM2M0));
+A = ones(size(dataCubeM2M0));
 
 %% 
-for pp = 1:n_frames
+for pp = 1:size(dataCubeM2M0,3)
       A(:,:,pp) = A(:,:,pp) * fullBackgroundSignal(pp);
 end
-fullVideoM2M0 = fullVideoM2M0 - A ; 
+dataCubeM2M0 = dataCubeM2M0 - A ; 
 
 
 
 %% Construct Velocity video 
-flowVideoRGB = zeros(size(fullVideoM2M0,1),size(fullVideoM2M0,2),3,size(fullVideoM2M0,3));
+flowVideoRGB = zeros(size(dataCubeM2M0,1),size(dataCubeM2M0,2),3,size(dataCubeM2M0,3));
 
-for ii = 1:size(fullVideoM2M0,3)
-    v = mat2gray(squeeze(fullVideoM2M0(:,:,ii)));
+for ii = 1:size(dataCubeM2M0,3)
+    v = mat2gray(squeeze(dataCubeM2M0(:,:,ii)));
     [hue_artery,sat_artery,val_artery,~] = createHSVmap(v,maskArtery,0,0.18); % 0 / 0.18 for orange-yellow range
     [hue_vein,sat_vein,val_vein,~] = createHSVmap(v,maskVein,0.68,0.5); %0.5/0.68 for cyan-dark blue range
     val = v.*(~(maskArtery+maskVein))+val_artery.*maskArtery+val_vein.*maskVein;
@@ -170,15 +132,13 @@ disp(['data reliability index 2 : ' num2str(dataReliabilityIndex2) ' %']);
 
 
 % FIXME : compute true regularied cube by replacing bad frames
-fullArterialPulseRegularized = squeeze(sum(fullVideoM2M0minusBKG .* maskArtery, [1 2])) / nnz(maskArtery);
+fullArterialPulseRegularized = squeeze(sum(dataCubeM2M0minusBKG .* maskArtery, [1 2])) / nnz(maskArtery);
 
 
 %% Creation of the avg pluse for In-plane arteries
 
-[onePulseVideominusBKG, selectedPulseIdx, cycles_signal] = create_one_cycle(fullVideoM2M0minusBKG, maskArtery, sys_index_list, Ninterp,path);
-[onePulseVideo, ~, ~] = create_one_cycle(fullVideoM2M0, maskArtery, sys_index_list, Ninterp,path);
-
-clear fullVideoM2M0
+[onePulseVideominusBKG, selectedPulseIdx, cycles_signal] = create_one_cycle(dataCubeM2M0minusBKG, maskArtery, sys_index_list, Ninterp,path);
+[onePulseVideo, ~, ~] = create_one_cycle(dataCubeM2M0, maskArtery, sys_index_list, Ninterp,path);
 
 avgArterialPulseHz = squeeze(sum(onePulseVideominusBKG .* maskArtery, [1 2]))/nnz(maskArtery);
 avgArterialPulseVelocityInPlane = avgArterialPulseHz * ToolBox.ScalingFactorVelocityInPlane;
@@ -334,7 +294,6 @@ disp('arterial pulse wave analysis...');
 %% Doppler AVG frequency heatmap 
 heatmap_AVG_raw = squeeze(mean(fullVideoM1M0,3));
 
-clear fullVideoM1M0
 
 %% diastolic Doppler frequency heatmap : 10% of frames before minimum of diastole
 heatmap_dia_raw = squeeze(mean(onePulseVideominusBKG(:,:,floor(0.9*Ninterp):Ninterp),3));
@@ -424,7 +383,7 @@ strXlabel = 'Time(s)' ;%createXlabelTime(1);
 
 strYlabel = 'frequency (kHz)';
 range0(1:2) = clim;
-fullTime = linspace(0,n_frames*ToolBox.stride/ToolBox.fs/1000,n_frames);
+fullTime = linspace(0,size(fullVideoM2M0,3)*ToolBox.stride/ToolBox.fs/1000,size(fullVideoM2M0,3));
 
 % calculate raw signals of arteries, background and veins
 
@@ -443,8 +402,6 @@ axis image
 range(1:2) = clim;
 
 local_bg_arteries = frame2im(getframe(gca));
-
-clear local_mask_artery
 
 figure(19)
 imagesc(mean(LocalBKG_vein,3).*local_mask_vein+ones(size(LocalBKG_vein,1))*mean(LocalBKG_vein,'all').*~local_mask_vein) ;
@@ -526,8 +483,8 @@ axis tight;
 plot2txt(fullTime(1:length(fullArterialPulseDerivative)),fullArterialPulseDerivative,'FullArterialPulseDerivative', ToolBox)
 plot2txt(fullTime(1:length(fullArterialPulseCleanDerivative)),fullArterialPulseCleanDerivative,'FullArterialPulseCleanDerivative', ToolBox)
 
-% c = colorbar('southoutside');
-% 
+c = colorbar('southoutside');
+
     % Colorbar for raw/flattened image
 colorfig = figure(2410);
 colorfig.Units = 'normalized';
@@ -846,14 +803,14 @@ return;
 
 %% Analysis CRA & CRV Kept in case we want to study CRA/CRV again 
 % 
-% fullCRAPulse = fullVideoM1M0 .* maskCRA;
+% fullCRAPulse = dataCubeM1M0 .* maskCRA;
 % fullCRAPulse = squeeze(sum(fullCRAPulse, [1 2]))/nnz(maskCRA);
 % 
-% fullCRVPulse = fullVideoM1M0 .* maskCRV;
+% fullCRVPulse = dataCubeM1M0 .* maskCRV;
 % fullCRVPulse = squeeze(sum(fullCRVPulse, [1 2]))/nnz(maskCRV);
 % 
 % %
-% fullBackgroundM1M0Signal = fullVideoM1M0 .* maskBackgroundM1M0;
+% fullBackgroundM1M0Signal = dataCubeM1M0 .* maskBackgroundM1M0;
 % fullBackgroundM1M0Signal = squeeze(sum(fullBackgroundM1M0Signal, [1 2]))/nnz(maskBackgroundM1M0);
 % 
 % 
@@ -884,14 +841,14 @@ return;
 % fullCRVPulse = fullCRVPulseMinusBackground;
 % 
 % % le plus simple fonctionne bien : soustraire le bkg.
-% A = ones(size(fullVideoM1M0));
+% A = ones(size(dataCubeM1M0));
 % % B = ones(size(dataCube));
-% for pp = 1:size(fullVideoM1M0,3)
+% for pp = 1:size(dataCubeM1M0,3)
 % %     A(:,:,pp) = A(:,:,pp) * fullBackgroundSignal(pp) * avgFullArterialPulse / avgFullBackgroundSignal;
 %       A(:,:,pp) = A(:,:,pp) * fullBackgroundM1M0Signal(pp);
 % %     B(:,:,pp) = B(:,:,pp) * fullBackgroundSignal(pp);    
 % end
-% fullVideoM1M0 = fullVideoM1M0 - A ;
+% dataCubeM1M0 = dataCubeM1M0 - A ;
 % % dataCube = dataCube - A .* maskVessel;
 % % dataCube = dataCube - B .* maskBackground;
 % 

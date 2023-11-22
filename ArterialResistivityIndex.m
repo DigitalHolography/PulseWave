@@ -1,5 +1,5 @@
 function [] = ArterialResistivityIndex(v_RMS_one_cycle,dataCubeM2M0, maskArtery,  ToolBox)
-PW_params = Parameters_json(path);
+PW_params = Parameters(path);
 disp('arterial resistivity...');
 
 % for pp = 1:size(dataCubeM2M0,3)

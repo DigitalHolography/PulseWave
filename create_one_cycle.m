@@ -2,7 +2,7 @@ function [one_cycle_video, selectedPulseIdx, cycles_signal] = create_one_cycle(v
 %   one_cycle() : identifies pulse cycles and average them to one video
 %   sys_index_list : list of systole indexes in video
 
-PW_params = Parameters_json(path);
+PW_params = Parameters(path);
 
 disp('interpolate, average, and shift');
 disp('arterial pulse waveforms');

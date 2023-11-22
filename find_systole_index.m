@@ -1,7 +1,7 @@
 function [sys_index_list, fullPulseWave] = find_systole_index(video,path,maskArtery)
 
 
-PW_params = Parameters_json(path);
+PW_params = Parameters(path);
 
 fullPulseWave = squeeze(sum(video .*maskArtery, [1 2])/nnz(maskArtery));
 pulse_init = detrend(fullPulseWave);

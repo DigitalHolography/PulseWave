@@ -1,28 +1,11 @@
 function [] = flow_rate(maskArtery, maskVein, maskCRA,maskSection, v_RMS,dataM0, ToolBox, k,path)
 
-PW_params = Parameters_json(path);
+PW_params = Parameters(path);
 
 %maskArtery = imdilate(maskArtery,strel('disk',5));
 %FIXME function velocity map
 
 v_RMS_AVG = mean(v_RMS,3);
-fullTime = linspace(0,size(v_RMS,3)*ToolBox.stride/ToolBox.fs/1000,size(v_RMS,3));
-
-%% change mask section ?
-
-radius_ratio = 0.18;
-radius_gap = 0.05;
-
-% radius1 = (PW_params.radius_ratio-PW_params.radius_gap)* (M+N)/2;
-% radius2 = (PW_params.radius_ratio+PW_params.radius_gap)* (M+N)/2;
-
-radius1 = (radius_ratio-radius_gap)* (M+N)/2;
-radius2 = (radius_ratio+radius_gap)* (M+N)/2;
-
-cercle_mask1 = sqrt((x - ToolBox.x_barycentre).^2 + (y - ToolBox.y_barycentre).^2) <= radius1;
-cercle_mask2 = sqrt((x - ToolBox.x_barycentre).^2 + (y - ToolBox.y_barycentre).^2) <= radius2;
-
-maskSection = xor(cercle_mask1,cercle_mask2);
 
 %% Find the locations of the sections in artery
 
@@ -85,8 +68,8 @@ end
 %% Compute blood volume rate
 mask_artery = maskArtery;
 mask_vein = maskVein;
-[avg_blood_volume_rate_vein,std_blood_volume_rate_vein, cross_section_area_vein, avg_blood_velocity_vein, cross_section_mask_vein,total_avg_blood_volume_rate_vein,total_std_blood_volume_rate_artery] = cross_section_analysis_new(SubImg_locs_vein, SubImg_width_vein, mask_vein, v_RMS, PW_params.flowRate_sliceHalfThickness, k,ToolBox,path,'vein');
-[avg_blood_volume_rate_artery,std_blood_volume_rate_artery, cross_section_area_artery, avg_blood_velocity_artery, cross_section_mask_artery,total_avg_blood_volume_rate_artery,total_std_blood_volume_rate_vein] = cross_section_analysis_new(SubImg_locs_artery, SubImg_width_artery, mask_artery, v_RMS, PW_params.flowRate_sliceHalfThickness, k,ToolBox,path,'artery');
+[avg_blood_volume_rate_vein,std_blood_volume_rate_vein, cross_section_area_vein, avg_blood_velocity_vein, cross_section_mask_vein,total_avg_blood_volume_rate_vein,total_std_blood_volume_rate_artery] = cross_section_analysis_new(SubImg_locs_vein, SubImg_width_vein, mask_vein, v_RMS, PW_params.flowRate_sliceHalfThickness, k,ToolBox,path,80);
+[avg_blood_volume_rate_artery,std_blood_volume_rate_artery, cross_section_area_artery, avg_blood_velocity_artery, cross_section_mask_artery,total_avg_blood_volume_rate_artery,total_std_blood_volume_rate_vein] = cross_section_analysis_new(SubImg_locs_artery, SubImg_width_artery, mask_artery, v_RMS, PW_params.flowRate_sliceHalfThickness, k,ToolBox,path,70);
 
 
 
@@ -96,19 +79,12 @@ labels_veins = {};
 strXlabel = 'Time(s)' ;%createXlabelTime(1);
 strYlabel = 'Velocity (mm.s-1)';
 
-data_to_plot_artery = zeros(size(avg_blood_velocity_artery,1),size(avg_blood_volume_rate_artery,2));
+figure(57)
+hold on
 for ii=1:size(avg_blood_volume_rate_artery,1)
-   data_to_plot_artery(ii,:) = smoothdata(avg_blood_velocity_artery(ii,:),'lowess');
+   plot(smoothdata(avg_blood_velocity_artery(ii,:),'lowess'))
    labels_arteries{end+1} = strcat('A',num2str(ii));
 end
-figure(57)
-% hold on
-% for ii=1:size(avg_blood_volume_rate_artery,1)
-%    plot(fullTime ,smoothdata(avg_blood_velocity_artery(ii,:),'lowess'),'LineWidth',2)
-%    labels_arteries{end+1} = strcat('A',num2str(ii));
-% end
-% hold off
-plot(fullTime ,data_to_plot_artery,'LineWidth',2)
 title('Blood velocity in artery sections');
 legend(labels_arteries);
 fontsize(gca,12,"points") ;
@@ -118,18 +94,12 @@ pbaspect([1.618 1 1]) ;
 set(gca, 'LineWidth', 2);
 axis tight;
 
-data_to_plot_vein = zeros(size(avg_blood_velocity_vein,1),size(avg_blood_volume_rate_vein,2));
-for ii=1:size(avg_blood_volume_rate_vein,1)
-   data_to_plot_vein(ii,:) = smoothdata(avg_blood_velocity_vein(ii,:),'lowess');
-   labels_veins{end+1} = strcat('A',num2str(ii));
-end
 figure(58)
-% hold on
-% for ii=1:size(avg_blood_volume_rate_vein,1)
-%    plot(smoothdata(avg_blood_velocity_vein(ii,:),'lowess'))
-%    labels_veins{end+1} = strcat('V',num2str(ii));
-% end
-plot(fullTime ,data_to_plot_vein,'LineWidth',2)
+hold on
+for ii=1:size(avg_blood_volume_rate_vein,1)
+   plot(smoothdata(avg_blood_velocity_vein(ii,:),'lowess'))
+   labels_veins{end+1} = strcat('V',num2str(ii));
+end
 title('Blood velocity in vein sections');
 legend(labels_veins);
 fontsize(gca,12,"points") ;
@@ -212,9 +182,9 @@ maskRGB_artery(:,:,1) = mat2gray(mean_M0).*~cross_section_mask_artery+maskRGB_ar
 figure(111222)
 imagesc(mean(v_RMS,3).*cross_section_mask_artery)
 colormap("gray")
-% Total_blood_flow_rate_artery = sum(avg_blood_volume_rate_artery);
-% disp('Total_blood_flow_rate')
-% disp(Total_blood_flow_rate_artery)
+Total_blood_flow_rate_artery = sum(avg_blood_volume_rate_artery);
+disp('Total_blood_flow_rate')
+disp(Total_blood_flow_rate_artery)
 title('Artery Sections' );
 axis image
 axis off
@@ -361,9 +331,9 @@ maskRGB_vein(:,:,3) = mat2gray(mean_M0).*~cross_section_mask_vein + maskRGB_vein
 figure(111223)
 imagesc(mean(v_RMS,3).*cross_section_mask_vein)
 colormap("gray")
-% Total_blood_flow_rate_vein = sum(avg_blood_volume_rate_vein);
-% disp('Total_blood_flow_rate')
-% disp(Total_blood_flow_rate_vein)
+Total_blood_flow_rate_vein = sum(avg_blood_volume_rate_vein);
+disp('Total_blood_flow_rate')
+disp(Total_blood_flow_rate_vein)
 title('Veins Sections' );
 axis image
 axis off

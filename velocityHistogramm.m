@@ -1,15 +1,8 @@
-function [] = velocityHistogramm(v_RMS_all, maskArtery,maskVein ,meanIm, ToolBox)
+function [] = velocityHistogramm(v_RMS_all, maskArtery,maskVein ,ToolBox)
 %% Init of histogram axis
 [size_vRMS_1,size_vRMS_2,size_vRMS_3] = size(v_RMS_all);
 
-maskSection = create_mask_section(meanIm, maskArtery, ToolBox);
-
-maskArtery_section = maskArtery & maskSection;
-
-figure(28112001)
-imshow(maskArtery_section)
-
-v_histo_artery = round(v_RMS_all.*maskArtery_section);
+v_histo_artery = round(v_RMS_all.*maskArtery);
 v_min_artery = min(v_histo_artery,[],'all');
 v_max_artery = max(v_histo_artery,[],'all');
 
@@ -21,6 +14,8 @@ v_max_all = max(v_max_artery,v_max_vein);
 v_min_all = min(v_min_artery,v_min_vein);
 v_max_all_display = round(0.8*v_max_all);
 v_min_all_display = round(0.8*v_min_all);
+
+
 
 yAx = [v_min_all v_max_all ] ;
 %yAx_display = [-20  80] ; 
