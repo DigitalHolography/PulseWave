@@ -299,7 +299,7 @@ classdef OneCycleClass
             copyfile(path_file_txt_params,ToolBox.PW_path_txt );
             
             %saving times
-            path_file_txt_exe_times = fullfile(path_dir_txt, 'ExecutionTimes.txt'));
+            path_file_txt_exe_times = fullfile(path_dir_txt, 'ExecutionTimes.txt');
 
             %% FlatField 
 

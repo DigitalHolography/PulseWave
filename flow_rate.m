@@ -424,7 +424,7 @@ axis tight ;
 axis([ax_vol_rate_artery(1) ax_vol_rate_artery(2) ax_vol_rate_artery(3) ax_vol_rate_artery(4)]);
 Plot_volume_rate_vein = getframe(gcf);
 Plot_volume_rate_video_vein = zeros(size(Plot_volume_rate_vein.cdata,1),size(Plot_volume_rate_vein.cdata,2),3,size(v_RMS,3));
-yticks(sort([0 20 40 round(mean_volume_rate_vein(1))]))
+% yticks(sort([0 20 40 round(mean_volume_rate_vein(1))]))
 
 for tt = 1:length(fullTime)
     figure(126); 
